@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "dev": "NODE_ENV=development npx ts-node src/index.ts",
+    "staging": "NODE_ENV=staging npx ts-node src/index.ts",
+    "prod": "NODE_ENV=production npx ts-node src/index.ts",
+    "keygen": "mkdir -p src/https && cd src/https && openssl req -newkey rsa:2048 -new -nodes -x509 -days 3650 -keyout key.pem -out cert.pem"
+  },
   "devDependencies": {
     "@types/node": "^18.11.18",
     "ts-node": "^10.9.1",

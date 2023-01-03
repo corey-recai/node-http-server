@@ -1,13 +1,53 @@
 import * as http from "http";
+import * as https from "https";
 import * as url from "url";
+import * as fs from "fs";
 import { StringDecoder } from "string_decoder";
 import { isEmpty } from "./lib/utils";
-
+import environment from "../config";
 import type { Handlers } from "./lib/interfaces";
 
-// the server should respond to all requests with a string
+interface ServerMessage {
+  req: http.IncomingMessage;
+  res: http.ServerResponse<http.IncomingMessage> & {
+    req: http.IncomingMessage;
+  };
+}
 
-const server = http.createServer((req, res) => {
+type Server = http.Server | https.Server;
+
+process.on("exit", code => {
+  return console.info(`exiting with code ${code}.`);
+});
+
+let server: Server;
+let port = environment.port.http;
+
+switch (process.argv[2]) {
+  case "http":
+    port = environment.port.http;
+    server = http.createServer((req, res) => {
+      handleServerMessage({ req, res });
+    });
+    break;
+  case "https":
+    port = environment.port.https;
+    const options = {
+      key: fs.readFileSync("src/https/key.pem"),
+      cert: fs.readFileSync("src/https/cert.pem"),
+    };
+    server = https.createServer(options, (req, res) => {
+      handleServerMessage({ req, res });
+    });
+    break;
+  default:
+    console.error("Please specify a valid server type.");
+    process.exit(0);
+}
+
+console.log(environment);
+
+const handleServerMessage = ({ req, res }: ServerMessage) => {
   // get the url and parse the path and query
   const { pathname, query: _query } = url.parse(req.url as string, true);
   const query = { ..._query };
@@ -21,7 +61,7 @@ const server = http.createServer((req, res) => {
   const decoder = new StringDecoder("utf-8");
   let buffer: string = "";
 
-  req.on("data", chunk => {
+  req.on("data", (chunk: Buffer) => {
     buffer += decoder.write(chunk);
   });
 
@@ -76,11 +116,11 @@ const server = http.createServer((req, res) => {
     //   console.log(buffer);
     // }
   });
-});
+};
 
 // start server, and listen on port 8080
-server.listen(8080, () => {
-  console.log("listening on port 8080");
+server.listen(port, () => {
+  console.log(`listening on port ${port}`);
 });
 
 const handlers: Handlers = {};
