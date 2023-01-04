@@ -3,9 +3,9 @@ import * as https from "https";
 import * as url from "url";
 import * as fs from "fs";
 import { StringDecoder } from "string_decoder";
-import { isEmpty } from "./lib/utils";
+
 import environment from "../config";
-import type { Handlers } from "./lib/interfaces";
+import type { Handlers } from "./interfaces";
 
 interface ServerMessage {
   req: http.IncomingMessage;
@@ -57,6 +57,7 @@ const handleServerMessage = ({ req, res }: ServerMessage) => {
   const { method: _method, headers } = req;
   const method = (_method as string).toUpperCase();
 
+  // decoder and buffer for incomming messages to be written to
   // optionally allocate a buffer to predefined memory
   const decoder = new StringDecoder("utf-8");
   let buffer: string = "";
@@ -87,34 +88,43 @@ const handleServerMessage = ({ req, res }: ServerMessage) => {
     };
 
     handler(data, (status: number, payload: {}) => {
+      // use the status code defined by the handler or 200
+      if (typeof status !== "number") status = 200;
+
+      // use the payload defined by the handler or an empty object
+      if (typeof payload !== "object") payload = {};
+
+      // set response content-type
       res.setHeader("Content-Type", "application/json");
+
+      // set response status code
       res.writeHead(status);
+
       // send the response
       res.end(JSON.stringify(payload));
-      //   HTTP Requests
-      // -------------
-      // GET /                          200 OK
+
+      // log the request
       console.log("\nHTTP Request\n-------------");
       console.log(`${method} ${pathname}\t${status}`);
 
+      // log the payload
       console.log("\nHTTP Payload\n-------------");
       console.log(payload);
+
+      // optionally log more detailed request info
+      // console.log("\nHTTP Headers\n-------------");
+      // console.log(headers);
+
+      // if (!isEmpty(query)) {
+      //   console.log("\nHTTP Query\n-------------");
+      //   console.log(JSON.stringify(query, null, 2));
+      // }
+
+      // if (buffer.length > 0) {
+      //   console.log("\nHTTP Payload\n-------------");
+      //   console.log(buffer);
+      // }
     });
-
-    // log the request info
-
-    // console.log("\nHTTP Headers\n-------------");
-    // console.log(headers);
-
-    // if (!isEmpty(query)) {
-    //   console.log("\nHTTP Query\n-------------");
-    //   console.log(JSON.stringify(query, null, 2));
-    // }
-
-    // if (buffer.length > 0) {
-    //   console.log("\nHTTP Payload\n-------------");
-    //   console.log(buffer);
-    // }
   });
 };
 
@@ -125,12 +135,11 @@ server.listen(port, () => {
 
 const handlers: Handlers = {};
 
-handlers.sample = (data, callback) => {
-  // callback http status code & payload object
-  callback(406, data);
+handlers.ping = (data, callback) => {
+  callback(200);
 };
 
-handlers.notFound = (_, callback) => {
+handlers.notFound = (data, callback) => {
   callback(404);
 };
 
@@ -139,5 +148,5 @@ interface Router {
 }
 
 const router: Router = {
-  sample: handlers.sample,
+  ping: handlers.ping,
 };
