@@ -4,18 +4,11 @@ import * as url from "url";
 import * as fs from "fs";
 import { StringDecoder } from "string_decoder";
 
-import environment from "../config";
-import type { Handlers } from "./interfaces";
+import environment from "../../../config";
 
-import { create, read } from "./lib/data";
+type Server = http.Server | https.Server;
 
-// create("test", "newfile", { foo: "bar" }, err => {
-//   console.log(`Error:\n${err}`);
-// });
-
-// read("test", "newfile", (err: any, data: any) => {
-//   console.log(`Error:\n${err}\nData:\n${data}`);
-// });
+type ServerType = "http" | "https";
 
 interface ServerMessage {
   req: http.IncomingMessage;
@@ -24,38 +17,30 @@ interface ServerMessage {
   };
 }
 
-type Server = http.Server | https.Server;
-
-process.on("exit", code => {
-  return console.info(`exiting with code ${code}.`);
-});
-
-let server: Server;
+// let server: Server;
 let port = environment.port.http;
 
-switch (process.argv[2]) {
-  case "http":
-    port = environment.port.http;
-    server = http.createServer((req, res) => {
-      handleServerMessage({ req, res });
-    });
-    break;
-  case "https":
-    port = environment.port.https;
-    const options = {
-      key: fs.readFileSync("src/https/key.pem"),
-      cert: fs.readFileSync("src/https/cert.pem"),
-    };
-    server = https.createServer(options, (req, res) => {
-      handleServerMessage({ req, res });
-    });
-    break;
-  default:
-    console.error("Please specify a valid server type.");
-    process.exit(0);
-}
-
-console.log(environment);
+const server = (type: ServerType): Server => {
+  switch (type) {
+    case "http":
+      port = environment.port.http;
+      return http.createServer((req, res) => {
+        handleServerMessage({ req, res });
+      });
+    case "https":
+      port = environment.port.https;
+      const options = {
+        key: fs.readFileSync("src/https/key.pem"),
+        cert: fs.readFileSync("src/https/cert.pem"),
+      };
+      return https.createServer(options, (req, res) => {
+        handleServerMessage({ req, res });
+      });
+    default:
+      console.error("Please specify a valid server type.");
+      process.exit(0);
+  }
+};
 
 const handleServerMessage = ({ req, res }: ServerMessage) => {
   // get the url and parse the path and query
@@ -138,25 +123,4 @@ const handleServerMessage = ({ req, res }: ServerMessage) => {
   });
 };
 
-// start server, and listen on port 8080
-server.listen(port, () => {
-  console.log(`listening on port ${port}`);
-});
-
-const handlers: Handlers = {};
-
-handlers.ping = (data, callback) => {
-  callback(200);
-};
-
-handlers.notFound = (data, callback) => {
-  callback(404);
-};
-
-interface Router {
-  [key: string]: any;
-}
-
-const router: Router = {
-  ping: handlers.ping,
-};
+export default server;

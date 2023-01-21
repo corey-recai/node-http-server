@@ -34,3 +34,9 @@ export const create: Create = (dir, file, data, callback) => {
     }
   });
 };
+
+export const read = (dir: any, file: any, callback: any) => {
+  fs.readFile(`${baseDir}/${dir}/${file}.json`, "utf8", (err, data) => {
+    callback(err, data);
+  });
+};
